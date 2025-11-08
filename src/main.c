@@ -4,10 +4,10 @@
 
 enum token_type;
 char** symbols;
-typedef struct token_struct token;
+struct token_struct;
 
 enum node_type;
-typedef struct node_struct node;
+struct node_struct;
 
 int main(int argc, char** argv){
 	char* symbols[] = {"+=", "-="};
@@ -22,19 +22,19 @@ int main(int argc, char** argv){
 		PROGRAM = 128 + sizeof(symbols)/sizeof(symbols[0]),
 	};
 
-	struct token_struct {
+	typedef struct token_struct {
 		enum token_type type;
 		char* string_argument;
-		token* token_argument;
-	};
+		struct token_struct* token_argument;
+	} token;
 
-	struct node_struct {
+	typedef struct node_struct {
 		enum node_type type;
 		token* token_argument;
-		node* back;
-		node* left;
-		node* right;
-	};
+		struct node_struct* back;
+		struct node_struct* left;
+		struct node_struct* right;
+	} node;
 
 	size_t strlen_argv_1 = strlen(argv[1]);
 	token code_lex[strlen_argv_1]; // "argv[1]" because I don't want to have to deal with file management until I need to
@@ -42,9 +42,9 @@ int main(int argc, char** argv){
 		
 	}
 	
-	node* code_tree;
-	code_tree->type = PROGRAM;
-	code_tree->back = NULL;
-	code_tree->left = malloc(sizeof(node));
-	code_tree->right = malloc(sizeof(node));
+	node code_tree;
+	code_tree.type = PROGRAM;
+	code_tree.back = NULL;
+	code_tree.left = malloc(sizeof(node));
+	code_tree.right = malloc(sizeof(node));
 }
