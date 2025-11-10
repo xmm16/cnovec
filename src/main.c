@@ -68,9 +68,34 @@ int main(int argc, char** argv){
 	} node;
 
 	size_t strlen_argv_1 = strlen(argv[1]); // "argv[1]" because I don't want to have to deal with file management until I need to
+	char* raw_code = argv[1];
+
 	token code_lex[strlen_argv_1];
+
+	int quote_mode = 0;
+	size_t quote_buf_start;
+	char* quote_arg = malloc(1);
+
 	for (int i = 0; i < strlen_argv_1; i++){
-		
+		if (quote_mode){
+			if (raw_code[i] == '"' && raw_code[i - 1] != '\\'){
+				quote_mode--;
+				int buf_size = i - quote_buf_start;
+				quote_arg = realloc(quote_arg, 1 + buf_size);
+				strncpy(quote_arg, &raw_code[quote_buf_start], buf_size);
+				quote_arg[buf_size] = '\0'; // check if it works without this
+				
+				printf("%s\n", quote_arg);
+				continue;
+			}
+			continue;
+		}
+
+		if (raw_code[i] == '"'){
+			quote_mode++;
+			quote_buf_start = i + 1;
+			continue;
+		}
 	}
 	
 	node code_tree;
