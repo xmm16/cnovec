@@ -5,18 +5,19 @@
 enum token_type;
 struct token_struct;
 char* symbols[] = {"+=", "-="};
+const size_t len_symbols = sizeof(symbols) / sizeof(symbols[0]);
 
 enum node_type;
 struct node_struct;
 
 enum token_type {
-  WORD = 128 + sizeof(symbols)/sizeof(symbols[0]), // 128 because that's where ASCII ends
+  WORD = 128 + len_symbols, // 128 because that's where ASCII ends
   INT,
   FLOAT
 };
 
 enum node_type {
-  PROGRAM = 128 + sizeof(symbols)/sizeof(symbols[0]),
+  PROGRAM = 128 + len_symbols,
 };
 
 typedef struct token_struct {
@@ -197,6 +198,13 @@ token* lex(char* raw_code, size_t strlen_argv_1, size_t* code_lex_index_ptr){
     }
 
     if (raw_code[i] == ' ' || raw_code[i] == '\t') continue;
+    
+    for (int j = 0; j < len_symbols; j++){
+      if (strncmp(&raw_code[i], symbols[j], strlen(symbols[j]))){
+        append_token(&code_lex, &code_lex_size, &code_lex_index, 128 + j, NULL, NULL);
+      }
+    }
+
     append_token(&code_lex, &code_lex_size, &code_lex_index, raw_code[i], NULL, NULL);
 	}
   
