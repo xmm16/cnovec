@@ -20,6 +20,7 @@ enum token_type {
 enum node_type {
   PROGRAM = 128 + LOCAL_LEN(symbols),
   FUNCTION_CALL,
+  LITERAL,
 };
 
 typedef struct token_struct {
@@ -222,6 +223,48 @@ token* lex(char* raw_code, size_t strlen_argv_1, size_t* code_lex_index_ptr){
   return code_lex;
 }
 
+size_t back_argument(token* code_lex, size_t code_lex_index, size_t index) { // returns 1 for left argument length of 1
+  if (index < 2) return 1;
+  if (code_lex[index - 1].type >= WORD && code_lex[index - 1].type <= FLOAT) return 1;
+  if (code_lex[index - 1].type == '(' && code_lex[index - 2].type == WORD) return 2;
+  if (code_lex[index - 1].type == '(') return 1;
+  return 2;
+}
+
+size_t forward_argument(token* code_lex, size_t code_lex_index, size_t index) { // returns 1 for right argument length of 1
+  if ((code_lex_index - index) < 3) return 1;
+  if (code_lex[index + 1].type >= WORD && code_lex[index + 1].type <= FLOAT) return 1;
+  if (code_lex[index + 1].type == WORD && code_lex[index + 2].type == '(') return 2;
+  if (code_lex[index + 1].type == '(') return 1; // this system (wrapping operator usage in parenthesis for most symbols) attempts to fix the readability problems of the language 
+  return 2;
+}
+
+void tree(node* code_tree_ptr, token* code_lex, size_t code_lex_index){
+  for (int i = 0; i < code_lex_index; i++){
+    #pragma GCC diagnostic push
+    #pragma GCC diagnostic ignored "-Wswitch"
+
+    switch (code_lex[i].type){
+      case '=': { // USE NEWLINES FOR ASSIGNMENTS
+        if (i >= 1 && code_lex[i - 1].type == '('){
+          if (i >= 2 && code_lex[i - 2].type == WORD){
+            code_tree_ptr->left->type = FUNCTION_CALL;
+            code_tree_ptr->left->back = code_tree_ptr;
+            code_tree_ptr->left->left = malloc(sizeof(node));
+            code_tree_ptr->left->left->type = LITERAL;
+            code_tree_ptr->left->left->back = code_tree_ptr->left;
+            token* left = 
+            code_tree_ptr->left->left->token_argument;
+            code_tree_ptr->left->right = malloc(sizeof(node));
+          }
+        }
+      }
+      default:
+        break;
+    }
+  }
+}
+
 int main(int argc, char** argv){
 	size_t strlen_argv_1 = strlen(argv[1]); // "argv[1]" because I don't want to have to deal with file management until I need to
 	char* raw_code = argv[1];
@@ -236,30 +279,13 @@ int main(int argc, char** argv){
   
   // MOVE THIS WHOLE SETUP TO ITS OWN FUNCTION SO THAT IT CAN RECURSE
 	node code_tree;
-	node* code_tree_ptr;
+	node* code_tree_ptr = &code_tree;
   code_tree.type = PROGRAM;
 	code_tree.back = NULL;
 	code_tree.left = malloc(sizeof(node));
 	code_tree.right = malloc(sizeof(node));
   
-  for (int i = 0; i < code_lex_index; i++){
-    #pragma GCC diagnostic push
-    #pragma GCC diagnostic ignored "-Wswitch"
-
-    switch (code_lex[i].type){
-      case '=': {
-        if (i >= 1 && code_lex[i - 1].type == '('){
-          if (i >= 2 && code_lex[i - 2].type == WORD){
-            code_tree_ptr->left->type = FUNCTION_CALL;
-            code_tree_ptr->left->back = code_tree_ptr;
-
-          }
-        }
-      }
-      default:
-        break;
-    }
-  }
+  tree(code_tree_ptr, code_lex, code_lex_index);
 
 	return 0;
 }
