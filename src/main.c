@@ -32,7 +32,6 @@ typedef struct token_struct {
 
 typedef struct node_struct {
   enum node_type type;
-  token* token_argument;
   struct node_struct* back;
   struct node_struct* left;
   struct node_struct* right;
@@ -240,36 +239,46 @@ size_t forward_argument(token* code_lex, size_t code_lex_index, size_t index) { 
 }
 
 void tree(node* code_tree_ptr, token* code_lex, size_t code_lex_index){
+  
   for (int i = 0; i < code_lex_index; i++){
     #pragma GCC diagnostic push
     #pragma GCC diagnostic ignored "-Wswitch"
 
     switch (code_lex[i].type){
       case '=': { // USE NEWLINES FOR ASSIGNMENTS
+        
         int restore_i = i;
-        while (code_lex[i].type != '\n'){
+        while (i != -1 && code_lex[i].type != '\n'){
           i--;
         }
-        
+
+        i++;
         code_tree_ptr->left->left = malloc(sizeof(node));
-        code_tree_ptr->left->left->type // yeah idk i can't think
+        code_tree_ptr->left->left->type = PROGRAM;
         code_tree_ptr->left->right = malloc(sizeof(node));
+        code_tree_ptr->left->right->type = PROGRAM;
 
         int restore_i_minus_i = restore_i - i;
-        code_tree_ptr->left->left->token_argument = malloc(restore_i_minus_i);
-        memcpy(code_tree_ptr->left->left->token_argument, &code_lex[i], restore_i_minus_i); // may not be valid, don't know yet
+        struct token_struct* left_token_argument = malloc(restore_i_minus_i);
+        memcpy(left_token_argument, &code_lex[i], restore_i_minus_i); // may not be valid, don't know yet
         
         i = restore_i;
-        while (code_lex[i].type != '\n'){
+        while (i != code_lex_index && code_lex[i].type != '\n'){
           i++;
         }
 
         int i_minus_restore_i = i - restore_i;
-        code_tree_ptr->left->right->token_argument = malloc(i_minus_restore_i);
-        memcpy(code_tree_ptr->left->right->token_argument, &code_lex[restore_i], i_minus_restore_i); 
+        struct token_struct* right_token_argument = malloc(i_minus_restore_i);
+        memcpy(right_token_argument, &code_lex[restore_i + 1], i_minus_restore_i); 
 
-        code_tree_ptr->left->type = FUNCTION_CALL;
+        code_tree_ptr->left->type = '=';
         code_tree_ptr->left->back = code_tree_ptr;
+        
+        tree(code_tree_ptr->left->left, left_token_argument, restore_i_minus_i);
+        tree(code_tree_ptr->left->left, left_token_argument, i_minus_restore_i);
+
+        code_tree_ptr = code_tree_ptr->right;
+        break;
       }
       default:
         break;
