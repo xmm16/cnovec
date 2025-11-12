@@ -242,23 +242,30 @@ void tree(node* code_tree_ptr, token* code_lex, size_t code_lex_index){
     #pragma GCC diagnostic push
     #pragma GCC diagnostic ignored "-Wswitch"
 
-	if (get_symbol("+=")) goto ASSIGN;
-	else if (get_symbol("-=")) goto ASSIGN;
-	else if (get_symbol("*=")) goto ASSIGN;
-	else if (get_symbol("/=")) goto ASSIGN;
-	else if (get_symbol("%=")) goto ASSIGN;
-	else if (get_symbol("<<=")) goto ASSIGN;
-	else if (get_symbol(">>=")) goto ASSIGN;
-	else if (get_symbol("&=")) goto ASSIGN;
-	else if (get_symbol("^=")) goto ASSIGN;
-	else if (get_symbol("|=")) goto ASSIGN;
-	else goto SKIP_ASSIGN;
-	int id;
-ASSIGN:
-	id = '=';
+	if (code_lex[i].type == get_symbol("+=")) goto ASSIGN;
+	else if (code_lex[i].type == get_symbol("-=")) goto ASSIGN;
+	else if (code_lex[i].type == get_symbol("*=")) goto ASSIGN;
+	else if (code_lex[i].type == get_symbol("/=")) goto ASSIGN;
+	else if (code_lex[i].type == get_symbol("%=")) goto ASSIGN;
+	else if (code_lex[i].type == get_symbol("<<=")) goto ASSIGN;
+	else if (code_lex[i].type == get_symbol(">>=")) goto ASSIGN;
+	else if (code_lex[i].type == get_symbol("&=")) goto ASSIGN;
+	else if (code_lex[i].type == get_symbol("^=")) goto ASSIGN;
+	else if (code_lex[i].type == get_symbol("|=")) goto ASSIGN;
+	else goto SINGLE;
+  int id;
 
-SKIP_ASSIGN:
-	id = code_lex[i].type;
+SINGLE: {
+   id = code_lex[i].type;
+   goto SKIP;
+}
+
+ASSIGN: {
+   id = '=';
+   goto SKIP;
+}
+
+SKIP:
 
     switch (id){
       case '=': { // USES NEWLINES FOR ASSIGNMENTS
