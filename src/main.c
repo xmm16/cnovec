@@ -45,11 +45,7 @@ void append_token(token** code_lex, size_t* code_lex_size, size_t* code_lex_inde
   }
 
   (*code_lex)[(*code_lex_index)].type = type;
-
-  if (string_argument != NULL){
-    (*code_lex)[(*code_lex_index)].string_argument = string_argument;
-  }
-
+  (*code_lex)[(*code_lex_index)].string_argument = string_argument;
   (*code_lex)[(*code_lex_index)].token_argument = token_argument;
   (*code_lex_index)++;
 }
@@ -303,8 +299,7 @@ int main(int argc, char** argv){
   // FOR PRINTING LEX:
   for (int i = 0; i < code_lex_index; i++){
     printf("type: %d\n", code_lex[i].type);
-    if (code_lex[i].string_argument != NULL)
-      printf("string argument: %s\n", code_lex[i].string_argument);
+    printf("string argument: %s\n", code_lex[i].string_argument);
   }
   
   // MOVE THIS WHOLE SETUP TO ITS OWN FUNCTION SO THAT IT CAN RECURSE
