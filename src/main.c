@@ -4,7 +4,7 @@
 
 enum token_type;
 struct token_struct;
-char* symbols[] = {"<<=", ">>=", "+=", "-=", "*=", "/=", "%=", "||", "&&",
+char* symbols[] = {"<<=", ">>=", "+=", "-=", "*=", "/=", "&=", "^=", "|=", "%=", "||", "&&",
 "==", "!=", ">=", "<=", "<<", ">>", "++", "--", "->"};
 #define LOCAL_LEN(ARR) (sizeof(ARR) / sizeof(ARR[0]))
 
@@ -48,6 +48,15 @@ void append_token(token** code_lex, size_t* code_lex_size, size_t* code_lex_inde
   (*code_lex)[(*code_lex_index)].string_argument = string_argument;
   (*code_lex)[(*code_lex_index)].token_argument = token_argument;
   (*code_lex_index)++;
+}
+
+int get_symbol(char* symbol){
+	for (int i = 0; i < LOCAL_LEN(symbols); i++){
+		if (strcmp(symbol, symbols[i]) == 0){
+			return 128 + i;
+		}
+	}
+	return -1;
 }
 
 int number_or_dot(char symbol){
@@ -227,31 +236,32 @@ token* lex(char* raw_code, size_t strlen_argv_1, size_t* code_lex_index_ptr){
   return code_lex;
 }
 
-size_t back_argument(token* code_lex, size_t code_lex_index, size_t index) { // returns 1 for left argument length of 1
-  if (index < 2) return 1;
-  if (code_lex[index - 1].type >= WORD && code_lex[index - 1].type <= FLOAT) return 1;
-  if (code_lex[index - 1].type == '(' && code_lex[index - 2].type == WORD) return 2;
-  if (code_lex[index - 1].type == '(') return 1;
-  return 2;
-}
-
-size_t forward_argument(token* code_lex, size_t code_lex_index, size_t index) { // returns 1 for right argument length of 1
-  if ((code_lex_index - index) < 3) return 1;
-  if (code_lex[index + 1].type >= WORD && code_lex[index + 1].type <= FLOAT) return 1;
-  if (code_lex[index + 1].type == WORD && code_lex[index + 2].type == '(') return 2;
-  if (code_lex[index + 1].type == '(') return 1; // this system (wrapping operator usage in parenthesis for most symbols) attempts to fix the readability problems of the language 
-  return 2;
-}
-
 void tree(node* code_tree_ptr, token* code_lex, size_t code_lex_index){
   
   for (int i = 0; i < code_lex_index; i++){
     #pragma GCC diagnostic push
     #pragma GCC diagnostic ignored "-Wswitch"
 
-    switch (code_lex[i].type){
-      case '=': { // USE NEWLINES FOR ASSIGNMENTS
-        
+	if (get_symbol("+=")) goto ASSIGN;
+	else if (get_symbol("-=")) goto ASSIGN;
+	else if (get_symbol("*=")) goto ASSIGN;
+	else if (get_symbol("/=")) goto ASSIGN;
+	else if (get_symbol("%=")) goto ASSIGN;
+	else if (get_symbol("<<=")) goto ASSIGN;
+	else if (get_symbol(">>=")) goto ASSIGN;
+	else if (get_symbol("&=")) goto ASSIGN;
+	else if (get_symbol("^=")) goto ASSIGN;
+	else if (get_symbol("|=")) goto ASSIGN;
+	goto SKIP_ASSIGN;
+	int id;
+ASSIGN:
+	id = '=';
+
+SKIP_ASSIGN:
+	id = code_lex[i].type;
+
+    switch (id){
+      case '=': { // USES NEWLINES FOR ASSIGNMENTS
         int restore_i = i;
         while (i != -1 && code_lex[i].type != '\n'){
           i--;
@@ -276,13 +286,17 @@ void tree(node* code_tree_ptr, token* code_lex, size_t code_lex_index){
         struct token_struct* right_token_argument = malloc(i_minus_restore_i);
         memcpy(right_token_argument, &code_lex[restore_i + 1], i_minus_restore_i); 
 
-        code_tree_ptr->left->type = '=';
+        code_tree_ptr->left->type = code_lex[i].type;
         code_tree_ptr->left->back = code_tree_ptr;
         
         tree(code_tree_ptr->left->left, left_token_argument, restore_i_minus_i);
         tree(code_tree_ptr->left->left, left_token_argument, i_minus_restore_i);
 
+	code_tree_ptr->right->back = code_tree_ptr;
         code_tree_ptr = code_tree_ptr->right;
+	code_tree_ptr->left = malloc(sizeof(node));
+	code_tree_ptr->right = malloc(sizeof(node));
+	code_tree_ptr->type = PROGRAM;
         break;
       }
       default:
