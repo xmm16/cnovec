@@ -28,8 +28,14 @@ enum node_type {
 typedef struct token_struct {
   enum token_type type;
   char *string_argument;
+  
   struct token_struct *token_argument;
+  struct token_struct *colon_argument;
+  struct token_struct *brace_argument;
+
   size_t token_length;
+  size_t colon_length;
+  size_t brace_length;
 } token;
 
 typedef struct node_struct {
@@ -39,6 +45,36 @@ typedef struct node_struct {
   struct node_struct *right;
   struct token_struct *token_argument;
 } node;
+
+void append_token_c(token **code_lex, size_t *code_lex_size,
+                  size_t *code_lex_index, enum token_type type,
+                  char *string_argument, token *token_argument) {
+  while ((*code_lex_size) < ((*code_lex_index) + 1) * sizeof(token)) {
+    (*code_lex_size) *= 2;
+    *code_lex = realloc(*code_lex, (*code_lex_size));
+  }
+
+  (*code_lex)[(*code_lex_index)].type = type;
+  (*code_lex)[(*code_lex_index)].string_argument = string_argument;
+  (*code_lex)[(*code_lex_index)].colon_argument = token_argument;
+  (*code_lex)[(*code_lex_index)].colon_length = 0;
+  (*code_lex_index)++;
+}
+
+void append_token_b(token **code_lex, size_t *code_lex_size,
+                  size_t *code_lex_index, enum token_type type,
+                  char *string_argument, token *token_argument) {
+  while ((*code_lex_size) < ((*code_lex_index) + 1) * sizeof(token)) {
+    (*code_lex_size) *= 2;
+    *code_lex = realloc(*code_lex, (*code_lex_size));
+  }
+
+  (*code_lex)[(*code_lex_index)].type = type;
+  (*code_lex)[(*code_lex_index)].string_argument = string_argument;
+  (*code_lex)[(*code_lex_index)].brace_argument = token_argument;
+  (*code_lex)[(*code_lex_index)].brace_length = 0;
+  (*code_lex_index)++;
+}
 
 void append_token(token **code_lex, size_t *code_lex_size,
                   size_t *code_lex_index, enum token_type type,
@@ -51,6 +87,7 @@ void append_token(token **code_lex, size_t *code_lex_size,
   (*code_lex)[(*code_lex_index)].type = type;
   (*code_lex)[(*code_lex_index)].string_argument = string_argument;
   (*code_lex)[(*code_lex_index)].token_argument = token_argument;
+  (*code_lex)[(*code_lex_index)].token_length = 0;
   (*code_lex_index)++;
 }
 
@@ -72,15 +109,22 @@ int letter_number_or_underscore(char symbol) {
          (symbol >= 'a' && symbol <= 'z') || (symbol == '_');
 }
 
+int letter_number_underscore_or_space(char symbol) {
+  return (symbol >= '0' && symbol <= '9') || (symbol >= 'A' && symbol <= 'Z') ||
+         (symbol >= 'a' && symbol <= 'z') || (symbol == '_') || (symbol == ' ');
+}
+
 token *lex(char *raw_code, size_t strlen_argv_1, size_t *code_lex_index_ptr) {
   size_t code_lex_size = 1;
   size_t code_lex_index = 0;
-  token *code_lex = malloc(code_lex_size);
+  token *code_lex = malloc(code_lex_size * sizeof(token*));
 
   int quote_mode = 0;
   size_t quote_buf_start;
 
   int paren_mode = 0;
+  int brace_mode = 0;
+  int colon_mode = 0;
   size_t paren_buf_start;
 
   int comment_mode = 0;
@@ -150,35 +194,74 @@ token *lex(char *raw_code, size_t strlen_argv_1, size_t *code_lex_index_ptr) {
     } else if (paren_mode)
       continue;
 
-    if (raw_code[i] == '(') {
+    if (!paren_mode && raw_code[i] == '(') {
       paren_mode++;
       paren_buf_start = i + 1;
 
       continue;
     }
 
-    if (paren_mode && raw_code[i] == '}') {
-      paren_mode--;
+    if (brace_mode && raw_code[i] == '}') {
+      brace_mode--;
 
       int buf_size = i - paren_buf_start;
       char *paren_arg =
-          malloc(1 + buf_size); // free every string argument in brackets
+          malloc(1 + buf_size); // free every string argument in parens
       strncpy(paren_arg, &raw_code[paren_buf_start], buf_size);
       paren_arg[buf_size] = '\0';
 
       size_t lexed_paren_index;
       token *lexed_paren =
           lex(paren_arg, strlen(paren_arg), &lexed_paren_index);
-      append_token(&code_lex, &code_lex_size, &code_lex_index, '{', paren_arg,
-                   lexed_paren);
-      code_lex[code_lex_index - 1].token_length = lexed_paren_index;
+      if (code_lex_index > 0 && code_lex[code_lex_index - 1].type == WORD && code_lex[code_lex_index - 1].type == '(' && code_lex[code_lex_index - 1].type == ':') {
+        code_lex_index--;
+        append_token_b(&code_lex, &code_lex_size, &code_lex_index, '{',
+                     code_lex[code_lex_index].string_argument, lexed_paren);
+      } else
+        append_token_b(&code_lex, &code_lex_size, &code_lex_index, '{', NULL,
+                     lexed_paren);
+      code_lex[code_lex_index - 1].brace_length = lexed_paren_index;
+      free(paren_arg);
 
       continue;
-    } else if (paren_mode)
+    } else if (brace_mode)
       continue;
 
-    if (raw_code[i] == '{') {
-      paren_mode++;
+    if (!brace_mode && raw_code[i] == '{') {
+      brace_mode++;
+      paren_buf_start = i + 1;
+
+      continue;
+    }
+
+    if (colon_mode && !letter_number_underscore_or_space(raw_code[i])) {
+      colon_mode--;
+
+      int buf_size = i - paren_buf_start;
+      char *paren_arg =
+          malloc(1 + buf_size); // free every string argument in parens
+      strncpy(paren_arg, &raw_code[paren_buf_start], buf_size);
+      paren_arg[buf_size] = '\0';
+
+      size_t lexed_paren_index;
+      token *lexed_paren =
+          lex(paren_arg, strlen(paren_arg), &lexed_paren_index);
+      if (code_lex_index > 0 && code_lex[code_lex_index - 1].type == WORD && code_lex[code_lex_index - 1].type == '(' && code_lex[code_lex_index - 1].type == ':') {
+        code_lex_index--;
+        append_token_c(&code_lex, &code_lex_size, &code_lex_index, ':',
+                     code_lex[code_lex_index].string_argument, lexed_paren);
+      } else
+        append_token_c(&code_lex, &code_lex_size, &code_lex_index, ':', NULL,
+                     lexed_paren);
+      code_lex[code_lex_index - 1].colon_length = lexed_paren_index;
+      free(paren_arg);
+
+      continue;
+    } else if (colon_mode)
+      continue;
+
+    if (!colon_mode && raw_code[i] == ':') {
+      colon_mode++;
       paren_buf_start = i + 1;
 
       continue;
