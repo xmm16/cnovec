@@ -1002,7 +1002,7 @@ void tree(node *code_tree_ptr, token *code_lex, size_t code_lex_index) {
       int restore_i = i;
       i--;
       // an interrupting operator would have a word, int, or float immediately behind it
-      while (i != -1 && !(/*following is defining for interrupting operator*/ (code_lex[i].type == '+' || code_lex[i].type == '-') && (i > 0 && (code_lex[i - 1].type == WORD || code_lex[i - 1].type == INT || code_lex[i - 1].type == FLOAT)))) {
+      while (i != -1 && !(/*following is defining for interrupting operator*/ (code_lex[i].type == '+' || code_lex[i].type == '-') && (i > 0 && (code_lex[i - 1].type == WORD || code_lex[i - 1].type == INT || code_lex[i - 1].type == FLOAT || code_lex[i - 1].type == '(' || code_lex[i - 1].type == '[' || code_lex[i - 1].type == '{')))) {
         i--;
       }
 
@@ -1025,7 +1025,7 @@ void tree(node *code_tree_ptr, token *code_lex, size_t code_lex_index) {
 
       i = restore_i;
       i++;
-      while (i != code_lex_index && !(/*following is defining for interrupting operator*/ (code_lex[i].type == '+' || code_lex[i].type == '-') && (i > 0 && (code_lex[i - 1].type == WORD || code_lex[i - 1].type == INT || code_lex[i - 1].type == FLOAT)))) {
+      while (i != code_lex_index && !(/*following is defining for interrupting operator*/ (code_lex[i].type == '+' || code_lex[i].type == '-') && (i > 0 && (code_lex[i - 1].type == WORD || code_lex[i - 1].type == INT || code_lex[i - 1].type == FLOAT || code_lex[i - 1].type == '(' || code_lex[i - 1].type == '[' || code_lex[i - 1].type == '{')))) {
         i++;
       }
 
