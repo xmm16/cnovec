@@ -7,6 +7,6 @@ My todo list for this project
 <!-- - for -->
 <!-- - if -->
 <!-- - in -->
-- parenthesis
-- brackets
-- braces
+<!-- - parenthesis -->
+<!-- - brackets -->
+<!-- - braces -->
