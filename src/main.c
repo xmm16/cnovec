@@ -23,7 +23,9 @@ enum node_type {
   PROGRAM = 128 + LOCAL_LEN(symbols),
   FUNCTION_CALL,
   LITERAL,
-  END
+  END,
+  BRACK_PAREN,
+  BRACE_PAREN
 };
 
 typedef struct token_struct {
@@ -47,6 +49,8 @@ typedef struct node_struct {
   struct node_struct *left;
   struct node_struct *right;
   struct token_struct *token_argument;
+  char *name; // needed for variables with something like
+              // brackets attached to it
 } node;
 
 void append_token_c(token **code_lex, size_t *code_lex_size,
@@ -1291,6 +1295,9 @@ void tree(node *code_tree_ptr, token *code_lex, size_t code_lex_index) {
 
     switch (id) {
     case '(': {
+      code_tree_ptr->left->name = malloc(1);
+      code_tree_ptr->left->name[1] = '\0';
+
       code_tree_ptr->left->left = malloc(sizeof(node));
       code_tree_ptr->left->left->type = PROGRAM;
       code_tree_ptr->left->left->left = malloc(sizeof(node));
@@ -1309,11 +1316,14 @@ void tree(node *code_tree_ptr, token *code_lex, size_t code_lex_index) {
       code_tree_ptr->right->left = malloc(sizeof(node));
       code_tree_ptr->right->right = malloc(sizeof(node));
       code_tree_ptr->right->type = PROGRAM;
-      tree(code_tree_ptr->right, &code_lex[i], code_lex_index - i);
+      tree(code_tree_ptr->right, &code_lex[i + 1], code_lex_index - i - 1);
       return;
     }
 
     case '{': {
+      code_tree_ptr->left->name = malloc(1);
+      code_tree_ptr->left->name[1] = '\0';
+
       code_tree_ptr->left->left = malloc(sizeof(node));
       code_tree_ptr->left->left->type = PROGRAM;
       code_tree_ptr->left->left->left = malloc(sizeof(node));
@@ -1332,11 +1342,14 @@ void tree(node *code_tree_ptr, token *code_lex, size_t code_lex_index) {
       code_tree_ptr->right->left = malloc(sizeof(node));
       code_tree_ptr->right->right = malloc(sizeof(node));
       code_tree_ptr->right->type = PROGRAM;
-      tree(code_tree_ptr->right, &code_lex[i], code_lex_index - i);
+      tree(code_tree_ptr->right, &code_lex[i + 1], code_lex_index - i - 1);
       return;
     }
 
     case '[': {
+      code_tree_ptr->left->name = malloc(1);
+      code_tree_ptr->left->name[1] = '\0';
+
       code_tree_ptr->left->left = malloc(sizeof(node));
       code_tree_ptr->left->left->type = PROGRAM;
       code_tree_ptr->left->left->left = malloc(sizeof(node));
@@ -1355,13 +1368,169 @@ void tree(node *code_tree_ptr, token *code_lex, size_t code_lex_index) {
       code_tree_ptr->right->left = malloc(sizeof(node));
       code_tree_ptr->right->right = malloc(sizeof(node));
       code_tree_ptr->right->type = PROGRAM;
-      tree(code_tree_ptr->right, &code_lex[i], code_lex_index - i);
+      tree(code_tree_ptr->right, &code_lex[i + 1], code_lex_index - i - 1);
       return;
     }
 
     case WORD:
       // ok so this is gonna handle attached parens, brackets, and braces.
-      // evaluator can handle colons itself
+      // something can have parenthesis && brackets || parenthesis && braces
+      // || all indivduals by themselves
+      // the evaluator can handle colons itself.
+      {
+        if (code_lex[i].token_length != 0 && code_lex[i].brack_length != 0) {
+          code_tree_ptr->left->name =
+              malloc(1 + strlen(code_lex[i].string_argument));
+
+          strcpy(code_tree_ptr->left->name, code_lex[i].string_argument);
+          code_tree_ptr->left->name[strlen(code_lex[i].string_argument)] = '\0';
+
+          code_tree_ptr->left->left = malloc(sizeof(node));
+          code_tree_ptr->left->left->type = PROGRAM;
+          code_tree_ptr->left->left->left = malloc(sizeof(node));
+          code_tree_ptr->left->left->right = malloc(sizeof(node));
+          code_tree_ptr->left->left->back = code_tree_ptr->left;
+          code_tree_ptr->left->right = malloc(sizeof(node));
+          code_tree_ptr->left->right->type = PROGRAM;
+          code_tree_ptr->left->right->back = code_tree_ptr->left;
+          code_tree_ptr->left->right->right = malloc(sizeof(node));
+          code_tree_ptr->left->right->left = malloc(sizeof(node));
+
+          code_tree_ptr->left->type = (enum node_type)BRACK_PAREN;
+          code_tree_ptr->left->back = code_tree_ptr;
+
+          tree(code_tree_ptr->left->left, code_lex[i].token_argument,
+               code_lex[i].token_length);
+          tree(code_tree_ptr->left->right, code_lex[i].brack_argument,
+               code_lex[i].brack_length);
+
+          code_tree_ptr->right->back = code_tree_ptr;
+          code_tree_ptr->right->left = malloc(sizeof(node));
+          code_tree_ptr->right->right = malloc(sizeof(node));
+          code_tree_ptr->right->type = PROGRAM;
+          tree(code_tree_ptr->right, &code_lex[i + 1], code_lex_index - i - 1);
+          return;
+        }
+
+        else if (code_lex[i].token_length != 0 &&
+                 code_lex[i].brace_length != 0) {
+          code_tree_ptr->left->name =
+              malloc(1 + strlen(code_lex[i].string_argument));
+
+          strcpy(code_tree_ptr->left->name, code_lex[i].string_argument);
+          code_tree_ptr->left->name[strlen(code_lex[i].string_argument)] = '\0';
+
+          code_tree_ptr->left->left = malloc(sizeof(node));
+          code_tree_ptr->left->left->type = PROGRAM;
+          code_tree_ptr->left->left->left = malloc(sizeof(node));
+          code_tree_ptr->left->left->right = malloc(sizeof(node));
+          code_tree_ptr->left->left->back = code_tree_ptr->left;
+          code_tree_ptr->left->right = malloc(sizeof(node));
+          code_tree_ptr->left->right->type = PROGRAM;
+          code_tree_ptr->left->right->back = code_tree_ptr->left;
+          code_tree_ptr->left->right->right = malloc(sizeof(node));
+          code_tree_ptr->left->right->left = malloc(sizeof(node));
+
+          code_tree_ptr->left->type = (enum node_type)BRACE_PAREN;
+          code_tree_ptr->left->back = code_tree_ptr;
+
+          tree(code_tree_ptr->left->left, code_lex[i].token_argument,
+               code_lex[i].token_length);
+          tree(code_tree_ptr->left->right, code_lex[i].brace_argument,
+               code_lex[i].brace_length);
+
+          code_tree_ptr->right->back = code_tree_ptr;
+          code_tree_ptr->right->left = malloc(sizeof(node));
+          code_tree_ptr->right->right = malloc(sizeof(node));
+          code_tree_ptr->right->type = PROGRAM;
+          tree(code_tree_ptr->right, &code_lex[i + 1], code_lex_index - i - 1);
+          return;
+
+        } else if (code_lex[i].token_length != 0) {
+          code_tree_ptr->left->name =
+              malloc(1 + strlen(code_lex[i].string_argument));
+
+          strcpy(code_tree_ptr->left->name, code_lex[i].string_argument);
+          code_tree_ptr->left->name[strlen(code_lex[i].string_argument)] = '\0';
+
+          code_tree_ptr->left->left = malloc(sizeof(node));
+          code_tree_ptr->left->left->type = PROGRAM;
+          code_tree_ptr->left->left->left = malloc(sizeof(node));
+          code_tree_ptr->left->left->right = malloc(sizeof(node));
+          code_tree_ptr->left->left->back = code_tree_ptr->left;
+          code_tree_ptr->left->right = malloc(sizeof(node));
+          code_tree_ptr->left->right->type = END;
+          code_tree_ptr->left->right->back = code_tree_ptr->left;
+
+          code_tree_ptr->left->type = (enum node_type)'(';
+          code_tree_ptr->left->back = code_tree_ptr;
+
+          tree(code_tree_ptr->left->left, code_lex[i].token_argument,
+               code_lex[i].token_length);
+          code_tree_ptr->right->back = code_tree_ptr;
+          code_tree_ptr->right->left = malloc(sizeof(node));
+          code_tree_ptr->right->right = malloc(sizeof(node));
+          code_tree_ptr->right->type = PROGRAM;
+          tree(code_tree_ptr->right, &code_lex[i + 1], code_lex_index - i - 1);
+          return;
+        } else if (code_lex[i].brack_length != 0) {
+          code_tree_ptr->left->name =
+              malloc(1 + strlen(code_lex[i].string_argument));
+
+          strcpy(code_tree_ptr->left->name, code_lex[i].string_argument);
+          code_tree_ptr->left->name[strlen(code_lex[i].string_argument)] = '\0';
+
+          code_tree_ptr->left->left = malloc(sizeof(node));
+          code_tree_ptr->left->left->type = PROGRAM;
+          code_tree_ptr->left->left->left = malloc(sizeof(node));
+          code_tree_ptr->left->left->right = malloc(sizeof(node));
+          code_tree_ptr->left->left->back = code_tree_ptr->left;
+          code_tree_ptr->left->right = malloc(sizeof(node));
+          code_tree_ptr->left->right->type = END;
+          code_tree_ptr->left->right->back = code_tree_ptr->left;
+
+          code_tree_ptr->left->type = (enum node_type)'[';
+          code_tree_ptr->left->back = code_tree_ptr;
+
+          tree(code_tree_ptr->left->left, code_lex[i].brack_argument,
+               code_lex[i].brack_length);
+          code_tree_ptr->right->back = code_tree_ptr;
+          code_tree_ptr->right->left = malloc(sizeof(node));
+          code_tree_ptr->right->right = malloc(sizeof(node));
+          code_tree_ptr->right->type = PROGRAM;
+          tree(code_tree_ptr->right, &code_lex[i + 1], code_lex_index - i - 1);
+          return;
+        } else if (code_lex[i].brace_length != 0) {
+          code_tree_ptr->left->name =
+              malloc(1 + strlen(code_lex[i].string_argument));
+
+          strcpy(code_tree_ptr->left->name, code_lex[i].string_argument);
+          code_tree_ptr->left->name[strlen(code_lex[i].string_argument)] = '\0';
+
+          code_tree_ptr->left->left = malloc(sizeof(node));
+          code_tree_ptr->left->left->type = PROGRAM;
+          code_tree_ptr->left->left->left = malloc(sizeof(node));
+          code_tree_ptr->left->left->right = malloc(sizeof(node));
+          code_tree_ptr->left->left->back = code_tree_ptr->left;
+          code_tree_ptr->left->right = malloc(sizeof(node));
+          code_tree_ptr->left->right->type = END;
+          code_tree_ptr->left->right->back = code_tree_ptr->left;
+
+          code_tree_ptr->left->type = (enum node_type)'{';
+          code_tree_ptr->left->back = code_tree_ptr;
+
+          tree(code_tree_ptr->left->left, code_lex[i].brace_argument,
+               code_lex[i].brace_length);
+          code_tree_ptr->right->back = code_tree_ptr;
+          code_tree_ptr->right->left = malloc(sizeof(node));
+          code_tree_ptr->right->right = malloc(sizeof(node));
+          code_tree_ptr->right->type = PROGRAM;
+          tree(code_tree_ptr->right, &code_lex[i + 1], code_lex_index - i - 1);
+          return;
+        } else
+          break;
+      }
+
     case '.': {
       int restore_i = i;
       i--;
